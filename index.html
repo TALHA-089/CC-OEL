@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>6th Sem Cloud Lab</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@16.0.2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            background: #f4f7f6;
+            padding: 40px;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        img {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        code {
+            display: block;
+            background: #eee;
+            padding: 5px;
+            margin-top: 10px;
+            font-size: 10px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>PaaS Media Transformation Lab</h1>
+    <input type="file" id="uploader">
+    <p id="status">Upload a high-res image ( > 1MB ) to start...</p>
+
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+        const { Client, Storage, ID, Account } = Appwrite;
+        const client = new Client().setEndpoint('https://fra.cloud.appwrite.io/v1').setProject('699ffdc20010f9194a76');
+        const account = new Account(client);
+        const storage = new Storage(client);
+        const BUCKET_ID = '69a004590036cec55d65';
+
+        // Ping Appwrite backend on page load to verify setup
+        account.get()
+            .then(() => {
+                console.log('Appwrite connection successful!');
+            })
+            .catch(err => {
+                if (err.code === 401) {
+                    console.log('Appwrite connection successful! (Server responded, no active session)');
+                } else {
+                    console.error('Appwrite connection failed:', err.message);
+                }
+            });
+
+        document.getElementById('uploader').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            document.getElementById('status').innerText = "Uploading to Cloud...";
+
+            try {
+                const response = await storage.createFile(BUCKET_ID, ID.unique(), file);
+                const fileId = response.$id;
+                const project = '699ffdc20010f9194a76';
+                const viewBase = `https://fra.cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${fileId}/view?project=${project}`;
+                const previewBase = `https://fra.cloud.appwrite.io/v1/storage/buckets/${BUCKET_ID}/files/${fileId}/preview?project=${project}`;
+
+                // TASK: Construct 4 different transformation URLs
+                const views = [
+                    { name: "Original", url: viewBase },
+                    { name: "WebP (Optimized)", url: previewBase + "&output=webp" },
+                    { name: "Mobile Thumbnail", url: previewBase + "&width=150&height=150&gravity=center" },
+                    { name: "Grayscale & Low Qual", url: previewBase + "&quality=10&opacity=0.5" }
+                ];
+
+                document.getElementById('gallery').innerHTML = views.map(v => `
+                    <div class="card">
+                        <h4>${v.name}</h4>
+                        <img src="${v.url}">
+                        <code>${v.url}</code>
+                    </div>
+                `).join('');
+                document.getElementById('status').innerText = "Processing Complete!";
+            } catch (err) {
+                document.getElementById('status').innerText = "Error: " + err.message;
+            }
+        });
+    </script>
+</body>
+
+</html>
